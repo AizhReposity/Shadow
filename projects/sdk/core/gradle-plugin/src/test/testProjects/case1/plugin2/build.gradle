@@ -1,5 +1,5 @@
 buildscript {
-    ext.build_gradle_version = '4.0.2'
+    ext.build_gradle_version = '7.0.3'
     repositories {
         if (!System.getenv().containsKey("DISABLE_TENCENT_MAVEN_MIRROR")) {
             maven { url 'https://mirrors.tencent.com/nexus/repository/maven-public/' }
@@ -55,10 +55,9 @@ shadow {
                 pluginApks {
                     pluginApk1 {
                         partKey = 'plugin2'
-                        buildTask = ':plugin2:assembleDebug'
-                        apkName = 'plugin2-debug.apk'
+                        buildTask = ':plugin2:assemblePluginDebug'
                         //这里因为单元测试时，会把项目根目录设置成case1的根目录
-                        apkPath = 'plugin2/build/outputs/apk/debug/plugin2-debug.apk'
+                        apkPath = 'plugin2/build/outputs/apk/plugin/debug/plugin2-plugin-debug.apk'
                         dependsOn = ['Core', 'Base']
                         hostWhiteList = ["androidx.test.espresso",
                                          "com.tencent.shadow.test.lib.plugin_use_host_code_lib.interfaces"]

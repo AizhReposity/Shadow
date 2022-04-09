@@ -29,8 +29,10 @@ import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.os.Build;
 
-import java.util.List;
+import java.lang.ref.WeakReference;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * 用于在plugin-loader中调用假的Application方法的接口
@@ -39,43 +41,67 @@ public class ShadowApplication extends ShadowContext {
 
     private Application mHostApplication;
 
-    private Map<String, List<String>> mBroadcasts;
+    private Map<String, String[]> mBroadcasts;
 
     private ShadowAppComponentFactory mAppComponentFactory;
 
+    final public ShadowActivityLifecycleCallbacks.Holder mActivityLifecycleCallbacksHolder
+            = new ShadowActivityLifecycleCallbacks.Holder();
+
     public boolean isCallOnCreate;
+
+    /**
+     * BroadcastReceiver到BroadcastReceiverWrapper对象到映射关系
+     * <p>
+     * 采用WeakHashMap<BroadcastReceiver, WeakReference<BroadcastReceiverWrapper>>
+     * 使key和value都采用弱引用持有，以保持原本BroadcastReceiver的GC回收时机。
+     * <p>
+     * BroadcastReceiver由原有业务代码强持有（也可能不持有），BroadcastReceiver原本在registerReceiver
+     * 之后交由系统持有，现在由BroadcastReceiverWrapper代替它被系统强持有。
+     * 所以BroadcastReceiverWrapper强引用持有BroadcastReceiver，保持了系统强引用BroadcastReceiver的关系。
+     * <p>
+     * 如果业务原本没有持有BroadcastReceiver，也就不会再有unregisterReceiver调用来，
+     * 也就不需要Map中有wrapper对应关系，所以用弱引用持有此关系没有影响。
+     */
+    final private Map<BroadcastReceiver, WeakReference<BroadcastReceiverWrapper>>
+            mReceiverWrapperMap = new WeakHashMap<>();
 
     @Override
     public Context getApplicationContext() {
         return this;
     }
 
-    private ShadowActivityLifecycleCallbacks.Holder lifecycleCallbacksHolder;
-
     public void registerActivityLifecycleCallbacks(
             ShadowActivityLifecycleCallbacks callback) {
-        lifecycleCallbacksHolder.registerActivityLifecycleCallbacks(this, callback);
+        mActivityLifecycleCallbacksHolder.registerActivityLifecycleCallbacks(
+                callback, this, mHostApplication
+        );
     }
 
     public void unregisterActivityLifecycleCallbacks(
             ShadowActivityLifecycleCallbacks callback) {
-        lifecycleCallbacksHolder.unregisterActivityLifecycleCallbacks(callback);
+        mActivityLifecycleCallbacksHolder.unregisterActivityLifecycleCallbacks(
+                callback, this, mHostApplication
+        );
     }
 
     public void onCreate() {
 
         isCallOnCreate = true;
 
-        for (Map.Entry<String, List<String>> entry : mBroadcasts.entrySet()) {
+        for (Map.Entry<String, String[]> entry : mBroadcasts.entrySet()) {
             try {
-                Class<?> clazz = mPluginClassLoader.loadClass(entry.getKey());
+                String receiverClassname = entry.getKey();
+                Class<?> clazz = mPluginClassLoader.loadClass(receiverClassname);
                 BroadcastReceiver receiver = ((BroadcastReceiver) clazz.newInstance());
-                mAppComponentFactory.instantiateReceiver(mPluginClassLoader, entry.getKey(), null);
+                mAppComponentFactory.instantiateReceiver(mPluginClassLoader, receiverClassname, null);
 
                 IntentFilter intentFilter = new IntentFilter();
-                for (String action:entry.getValue()
-                     ) {
-                    intentFilter.addAction(action);
+                String[] receiverActions = entry.getValue();
+                if (receiverActions != null) {
+                    for (String action : receiverActions) {
+                        intentFilter.addAction(action);
+                    }
                 }
                 registerReceiver(receiver, intentFilter);
             } catch (Exception e) {
@@ -144,12 +170,16 @@ public class ShadowApplication extends ShadowContext {
     public void setHostApplicationContextAsBase(Context hostAppContext) {
         super.attachBaseContext(hostAppContext);
         mHostApplication = (Application) hostAppContext;
-        lifecycleCallbacksHolder
-                = new ShadowActivityLifecycleCallbacks.Holder(mHostApplication);
     }
 
-    public void setBroadcasts(Map<String, List<String>> broadcast){
-        mBroadcasts = broadcast;
+    public void setBroadcasts(PluginManifest.ReceiverInfo[] receiverInfos) {
+        Map<String, String[]> classNameToActions = new HashMap<>();
+        if (receiverInfos != null) {
+            for (PluginManifest.ReceiverInfo receiverInfo : receiverInfos) {
+                classNameToActions.put(receiverInfo.className, receiverInfo.actions);
+            }
+        }
+        mBroadcasts = classNameToActions;
     }
 
     public void attachBaseContext(Context base) {
@@ -163,5 +193,21 @@ public class ShadowApplication extends ShadowContext {
     @SuppressLint("NewApi")
     public static String getProcessName() {
         return Application.getProcessName();
+    }
+
+    public BroadcastReceiverWrapper receiverToWrapper(BroadcastReceiver receiver) {
+        if (receiver == null) {
+            return null;
+        }
+        synchronized (mReceiverWrapperMap) {
+            WeakReference<BroadcastReceiverWrapper> weakReference
+                    = mReceiverWrapperMap.get(receiver);
+            BroadcastReceiverWrapper wrapper = weakReference == null ? null : weakReference.get();
+            if (wrapper == null) {
+                wrapper = new BroadcastReceiverWrapper(receiver, this);
+                mReceiverWrapperMap.put(receiver, new WeakReference<>(wrapper));
+            }
+            return wrapper;
+        }
     }
 }

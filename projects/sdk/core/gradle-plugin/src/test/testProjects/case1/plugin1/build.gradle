@@ -1,5 +1,5 @@
 buildscript {
-    ext.build_gradle_version = '4.0.2'
+    ext.build_gradle_version = '7.0.3'
     repositories {
         if (!System.getenv().containsKey("DISABLE_TENCENT_MAVEN_MIRROR")) {
             maven { url 'https://mirrors.tencent.com/nexus/repository/maven-public/' }
@@ -58,9 +58,8 @@ shadow {
                     pluginApk1 {
                         businessName = 'plugin1'
                         partKey = 'plugin1'
-                        buildTask = ':plugin1:assembleDebug'
-                        apkName = 'plugin1-debug.apk'
-                        apkPath = 'plugin1/build/outputs/apk/debug/plugin1-debug.apk'
+                        buildTask = ':plugin1:assemblePluginDebug'
+                        apkPath = 'plugin1/build/outputs/apk/plugin/debug/plugin1-plugin-debug.apk'
                         dependsOn = ['Core', 'Base']
                         hostWhiteList = ["androidx.test.espresso",
                                          "com.tencent.shadow.test.lib.plugin_use_host_code_lib.interfaces"]
@@ -72,9 +71,8 @@ shadow {
                 pluginApks {
                     pluginApk1 {
                         partKey = 'plugin1'
-                        buildTask = ':plugin1:assembleDebug'
-                        apkName = 'plugin1-debug.apk'
-                        apkPath = 'plugin1/build/outputs/apk/debug/plugin1-debug.apk'
+                        buildTask = ':plugin1:assemblePluginDebug'
+                        apkPath = 'plugin1/build/outputs/apk/plugin/debug/plugin1-plugin-debug.apk'
                         dependsOn = ['Core', 'Base']
                         hostWhiteList = ["androidx.test.espresso",
                                          "com.tencent.shadow.test.lib.plugin_use_host_code_lib.interfaces"]

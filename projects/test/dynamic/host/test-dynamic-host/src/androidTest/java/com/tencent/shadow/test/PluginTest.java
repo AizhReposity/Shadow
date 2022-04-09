@@ -45,7 +45,8 @@ public abstract class PluginTest {
 
     /**
      * 要启动的插件intent
-     * @return  插件Activity intent
+     *
+     * @return 插件Activity intent
      */
     abstract protected Intent getLaunchIntent();
 
@@ -56,10 +57,11 @@ public abstract class PluginTest {
 
     /**
      * 检测view
+     *
      * @param tag  view的tag
      * @param text view上的文字
      */
-    public void matchTextWithViewTag(String tag,String text){
+    public void matchTextWithViewTag(String tag, String text) {
         Espresso.onView(ViewMatchers.withTagValue(Matchers.<Object>is(tag)))
                 .check(ViewAssertions.matches(ViewMatchers.withText(text)));
     }
@@ -92,10 +94,15 @@ public abstract class PluginTest {
         intent.putExtra(Constant.KEY_PLUGIN_PART_KEY, partKey);
         intent.putExtra(Constant.KEY_ACTIVITY_CLASSNAME, pluginIntent.getComponent().getClassName());
         intent.putExtra(Constant.KEY_EXTRAS, pluginIntent.getExtras());
+        intent.putExtra(Constant.KEY_FROM_ID, getFromId());
         ActivityScenario.launch(intent);
     }
 
     protected Class<? extends Activity> getJumpActivityClass() {
         return JumpToPluginActivity.class;
+    }
+
+    protected int getFromId() {
+        return Constant.FROM_ID_START_ACTIVITY;
     }
 }

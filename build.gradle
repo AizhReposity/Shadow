@@ -3,8 +3,8 @@
 //buildscript不能从其他gradle文件中apply，所以这段buildscript脚本存在于多个子构建中。
 //请更新buildscript时同步更新。
 buildscript {
-    ext.kotlin_version = '1.4.10'
-    ext.build_gradle_version = '4.0.2'
+    ext.kotlin_version = '1.5.31'
+    ext.build_gradle_version = '7.0.3'
     repositories {
         if (!System.getenv().containsKey("DISABLE_TENCENT_MAVEN_MIRROR")) {
             maven { url 'https://mirrors.tencent.com/nexus/repository/maven-public/' }
@@ -16,28 +16,9 @@ buildscript {
     dependencies {
         classpath "com.android.tools.build:gradle:$build_gradle_version"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.tencent.shadow.coding:aar-to-jar-plugin'
     }
 }
 apply from: 'buildScripts/gradle/common.gradle'
 
 apply from: "buildScripts/gradle/maven.gradle"
-
-task clean(type: Delete) {
-    delete rootProject.buildDir
-    dependsOn gradle.includedBuild('coding').task(':checks:clean')
-    dependsOn gradle.includedBuild('coding').task(':lint:clean')
-    dependsOn gradle.includedBuild('coding').task(':code-generator:clean')
-    dependsOn gradle.includedBuild('core').task(':gradle-plugin:clean')
-    dependsOn gradle.includedBuild('core').task(':common:clean')
-    dependsOn gradle.includedBuild('core').task(':loader:clean')
-    dependsOn gradle.includedBuild('core').task(':manager:clean')
-    dependsOn gradle.includedBuild('core').task(':runtime:clean')
-    dependsOn gradle.includedBuild('core').task(':activity-container:clean')
-    dependsOn gradle.includedBuild('core').task(':transform:clean')
-    dependsOn gradle.includedBuild('core').task(':transform-kit:clean')
-    dependsOn gradle.includedBuild('dynamic').task(':dynamic-apk:clean')
-    dependsOn gradle.includedBuild('dynamic').task(':dynamic-host:clean')
-    dependsOn gradle.includedBuild('dynamic').task(':dynamic-loader:clean')
-    dependsOn gradle.includedBuild('dynamic').task(':dynamic-loader-impl:clean')
-    dependsOn gradle.includedBuild('dynamic').task(':dynamic-manager:clean')
-}

@@ -18,9 +18,14 @@
 
 package com.tencent.shadow.sample.manager;
 
+import static com.tencent.shadow.sample.constant.Constant.PART_KEY_PLUGIN_ANOTHER_APP;
+import static com.tencent.shadow.sample.constant.Constant.PART_KEY_PLUGIN_BASE;
+import static com.tencent.shadow.sample.constant.Constant.PART_KEY_PLUGIN_MAIN_APP;
+
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.RemoteException;
 import android.view.LayoutInflater;
 import android.view.View;
 
@@ -52,21 +57,15 @@ public class SamplePluginManager extends FastPluginManager {
     }
 
     /**
-     * @return 宿主so的ABI。插件必须和宿主使用相同的ABI。
-     */
-    @Override
-    public String getAbi() {
-        return "";
-    }
-
-    /**
      * @return 宿主中注册的PluginProcessService实现的类名
      */
     @Override
     protected String getPluginProcessServiceName(String partKey) {
-        if ("sample-plugin-app".equals(partKey)) {
+        if (PART_KEY_PLUGIN_MAIN_APP.equals(partKey)) {
             return "com.tencent.shadow.sample.host.PluginProcessPPS";
-        } else if ("sample-plugin-app2".equals(partKey)) {
+        } else if (PART_KEY_PLUGIN_BASE.equals(partKey)) {
+            return "com.tencent.shadow.sample.host.PluginProcessPPS";
+        } else if (PART_KEY_PLUGIN_ANOTHER_APP.equals(partKey)) {
             return "com.tencent.shadow.sample.host.Plugin2ProcessPPS";//在这里支持多个插件
         } else {
             //如果有默认PPS，可用return代替throw
@@ -82,8 +81,24 @@ public class SamplePluginManager extends FastPluginManager {
             onStartActivity(context, bundle, callback);
         } else if (fromId == Constant.FROM_ID_CLOSE) {
             close();
+        } else if (fromId == Constant.FROM_ID_LOAD_VIEW_TO_HOST) {
+            loadViewToHost(context, bundle);
         } else {
             throw new IllegalArgumentException("不认识的fromId==" + fromId);
+        }
+    }
+
+    private void loadViewToHost(final Context context, Bundle bundle) {
+        Intent pluginIntent = new Intent();
+        pluginIntent.setClassName(
+                context.getPackageName(),
+                "com.tencent.shadow.sample.plugin.app.lib.usecases.service.HostAddPluginViewService"
+        );
+        pluginIntent.putExtras(bundle);
+        try {
+            mPluginLoader.startPluginService(pluginIntent);
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -106,6 +121,12 @@ public class SamplePluginManager extends FastPluginManager {
             public void run() {
                 try {
                     InstalledPlugin installedPlugin = installPlugin(pluginZipPath, null, true);
+
+                    loadPlugin(installedPlugin.UUID, PART_KEY_PLUGIN_BASE);
+                    loadPlugin(installedPlugin.UUID, PART_KEY_PLUGIN_MAIN_APP);
+                    callApplicationOnCreate(PART_KEY_PLUGIN_BASE);
+                    callApplicationOnCreate(PART_KEY_PLUGIN_MAIN_APP);
+
                     Intent pluginIntent = new Intent();
                     pluginIntent.setClassName(
                             context.getPackageName(),
@@ -114,8 +135,9 @@ public class SamplePluginManager extends FastPluginManager {
                     if (extras != null) {
                         pluginIntent.replaceExtras(extras);
                     }
-
-                    startPluginActivity(installedPlugin, partKey, pluginIntent);
+                    Intent intent = mPluginLoader.convertActivityIntent(pluginIntent);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    mPluginLoader.startActivityInPluginProcess(intent);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }

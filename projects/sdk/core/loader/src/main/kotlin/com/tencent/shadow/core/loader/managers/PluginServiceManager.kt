@@ -44,18 +44,17 @@ class PluginServiceManager(mPluginLoader: ShadowPluginLoader, mHostContext: Cont
         UnsafePluginServiceManager(mPluginLoader, mHostContext)
     private val mainThreadHandler = Handler(Looper.getMainLooper())
 
-    private fun <T> execInMainThread(action: () -> T): T {
-        if (Looper.myLooper() == Looper.getMainLooper()) {
+    private inline fun <reified T> execInMainThread(crossinline action: () -> T): T {
+        if (Thread.currentThread() === Looper.getMainLooper().thread) {
             return action()
         } else {
             val countDownLatch = CountDownLatch(1)
-            val result = arrayOfNulls<Any>(1)
+            val result = arrayOfNulls<T>(1)
             mainThreadHandler.post {
                 result[0] = action()
                 countDownLatch.countDown()
             }
             countDownLatch.await()
-            @Suppress("UNCHECKED_CAST")
             return result[0] as T
         }
     }
@@ -100,6 +99,7 @@ private open class UnsafePluginServiceManager(
 
     // 通过startService启动起来的service集合
     private val mServiceStartByStartServiceSet = HashSet<ComponentName>()
+
     // 存在mAliveServicesMap中，且stopService已经调用的service集合
     private val mServiceStopCalledMap = HashSet<ComponentName>()
 
@@ -229,7 +229,6 @@ private open class UnsafePluginServiceManager(
     }
 
 
-
     fun onConfigurationChanged(newConfig: Configuration?) {
         allDelegates.forEach {
             it.onConfigurationChanged(newConfig)
@@ -282,7 +281,7 @@ private open class UnsafePluginServiceManager(
         val tmpShadowDelegate = TmpShadowDelegate()
         mPluginLoader.inject(tmpShadowDelegate, partKey!!)
         val service = tmpShadowDelegate.getAppComponentFactory()
-                .instantiateService(tmpShadowDelegate.getPluginClassLoader(), className, intent)
+            .instantiateService(tmpShadowDelegate.getPluginClassLoader(), className, intent)
 
         service.setPluginResources(tmpShadowDelegate.getPluginResources())
         service.setPluginClassLoader(tmpShadowDelegate.getPluginClassLoader())
@@ -320,7 +319,10 @@ private open class UnsafePluginServiceManager(
             }
         } else {
             // 如果该service，有通过startService,则必须调用过stopService且没有bind了，才能销毁
-            if (mServiceStopCalledMap.contains(service) && !mServiceConnectionMap.containsKey(service)) {
+            if (mServiceStopCalledMap.contains(service) && !mServiceConnectionMap.containsKey(
+                    service
+                )
+            ) {
                 // 结束该service
                 destroy()
                 return true

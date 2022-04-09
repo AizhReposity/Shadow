@@ -38,4 +38,9 @@ public abstract class PluginServiceAppTest extends PluginTest {
     protected Class<? extends Activity> getJumpActivityClass() {
         return BindPluginServiceActivity.class;
     }
+
+    @Override
+    protected int getFromId() {
+        return Constant.FROM_ID_BIND_SERVICE;
+    }
 }

@@ -30,22 +30,10 @@ Shadow不仅开源分享了插件技术的关键代码，还完整的分享了�
 ## 编译与开发环境
 
 ### 环境准备
-第一次clone Shadow的代码到本地后，建议先在命令行编译一次。
+建议直接用最新的稳定版本Android Studio打开工程。目前项目已适配`Android Studio Arctic Fox | 2020.3.1`，
+低版本的Android Studio可能因为Gradle版本过高而无法正常打开项目。
 
-* 在编译前，**必须**设置`ANDROID_HOME`环境变量。
-* 在编译时，**必须**使用`gradlew`脚本，以保证采用了项目配置的Gradle版本。
-
-在命令行测试编译时可以执行这个任务：
-```
-./gradlew build
-```
-
-如果没有出错，再尝试用Android Studio打开工程。
-
-* **必须**使用3.5或更高版本的Android Studio打开工程。(业务插件开发时没有限制)
-* **必须**关闭Android Studio的**Instant Run**功能。
-
-然后就可以在IDE中选择`sample-host`模块直接运行了。
+然后在IDE中选择`sample-app`或`sample-host`模块直接运行，分别体验同一份代码在正常安装情况下和插件情况下的运行情况。
 
 ![选择sample-host直接运行](pics/run-sample-host-in-ide.png)
 
@@ -78,7 +66,13 @@ Shadow现有的代码满足的是我们自己的业务现在的需求。得益�
 * 开源包含下载能力的manager实现
 
 ## 贡献代码
+
 详见[CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## 许可协议
+
 Tencent Shadow采用`BSD 3-Clause License`，详见[LICENSE](LICENSE.txt)。
+
+## 个人信息保护规则声明
+
+详见[PRIVACY.md](PRIVACY.md)
